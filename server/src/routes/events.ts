@@ -32,7 +32,7 @@ router.post('/', authMiddleware, checkEventLimit, async (req: AuthRequest, res: 
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
     const slug = generateSlug(eventName);
     const limits = PLAN_LIMITS[user.subscriptionTier] || PLAN_LIMITS.FREE;
-    const eventUrl = `http://localhost:5173/e/${slug}`;
+    const eventUrl = `https://qr-photo-scan.vercel.app/e/${slug}`;
     const qrCodeData = await QRCode.toDataURL(eventUrl, { width: 400, margin: 2 });
     const event = await prisma.event.create({ data: { hostId: user.id, slug, eventName, eventDate: eventDate ? new Date(eventDate) : null, qrCodeData, maxPhotosAllowed: limits.maxPhotos } });
     res.status(201).json({ event, eventUrl });

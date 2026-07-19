@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'https://qr-photo-scan-backend.onrender.com/api';
 
 export async function apiRequest<T>(
   endpoint: string,
