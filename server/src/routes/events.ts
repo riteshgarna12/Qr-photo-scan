@@ -7,6 +7,8 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { compressImage, formatBytes } from '../utils/imageCompressor';
+import { uploadFile, deleteFile, isCloudEnabled } from '../utils/cloudStorage';
+import fs from 'fs';
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, process.env.UPLOAD_DIR || './uploads'),
@@ -109,17 +111,41 @@ router.post('/:id/cover', authMiddleware, upload.single('cover'), async (req: Au
 
     // Compress cover photo
     let finalFilename = req.file.filename;
+    let finalPath = path.resolve(req.file.path);
     try {
-      const result = await compressImage(path.resolve(req.file.path));
+      const result = await compressImage(finalPath);
       if (result.wasCompressed) {
         console.log(`[Compress] Cover photo: ${formatBytes(result.originalSizeBytes)} → ${formatBytes(result.compressedSizeBytes)} (${result.reductionPercent}% reduction)`);
       }
       finalFilename = path.basename(result.newFilePath);
+      finalPath = result.newFilePath;
     } catch (err) {
       console.error('[Compress] Failed to compress cover photo, using original:', err);
     }
 
-    const coverImageUrl = `/uploads/${finalFilename}`;
+    // Upload to cloud if enabled
+    const coverImageUrl = await uploadFile(finalPath, finalFilename, req.file.mimetype);
+
+    // Clean up local temp file if cloud storage is active
+    if (isCloudEnabled()) {
+      try {
+        if (fs.existsSync(finalPath)) {
+          fs.unlinkSync(finalPath);
+        }
+      } catch (cleanupErr: any) {
+        console.error(`[Cover Upload] Temp file cleanup error: ${cleanupErr.message}`);
+      }
+    }
+
+    // Delete old cover photo from cloud/disk if it exists
+    if (event.coverImageUrl) {
+      try {
+        await deleteFile(event.coverImageUrl);
+      } catch (err: any) {
+        console.error('[Cover Upload] Failed to delete old cover:', err.message);
+      }
+    }
+
     const updated = await prisma.event.update({ where: { id }, data: { coverImageUrl } });
     res.json({ event: updated });
   } catch (err) {

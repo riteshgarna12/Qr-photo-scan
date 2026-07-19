@@ -26,6 +26,7 @@ const upload = multer({
 
 import { getEmbeddingsForImage } from '../utils/faceEngine';
 import { compressImage, formatBytes } from '../utils/imageCompressor';
+import { uploadFile, deleteFile, isCloudEnabled } from '../utils/cloudStorage';
 
 // Background queue to process face indexing without blocking upload HTTP response
 const uploadQueue: Array<{ photoId: string; filePath: string }> = [];
@@ -47,6 +48,18 @@ async function processUploadQueue() {
         data: { facesData: JSON.stringify(faces) },
       });
       console.log(`[AI Worker] Indexing complete for photo: ${job.photoId}. Found ${faces.length} face(s).`);
+
+      // Clean up local temp file once indexed if cloud storage is active
+      if (isCloudEnabled()) {
+        try {
+          if (fs.existsSync(job.filePath)) {
+            fs.unlinkSync(job.filePath);
+            console.log(`[AI Worker] Cleaned up local temp file after indexing: ${path.basename(job.filePath)}`);
+          }
+        } catch (cleanupErr: any) {
+          console.error(`[AI Worker] Temp file cleanup error: ${cleanupErr.message}`);
+        }
+      }
     } catch (err) {
       console.error(`[AI Worker] Failed to process photo: ${job.photoId}`, err);
     }
@@ -90,18 +103,20 @@ router.post('/:eventId/upload', authMiddleware, upload.array('photos', 50), asyn
       }
     }));
     
-    // Create database records with compressed file references
+    // Create database records with compressed file references (uploading to cloud if enabled)
     const photos = await Promise.all(compressedFiles.map(async (file) => {
+      const publicUrl = await uploadFile(file.path, file.filename, file.mimetype);
+
       const photo = await prisma.photo.create({
         data: {
           eventId,
-          url: `/uploads/${file.filename}`,
+          url: publicUrl,
           fileName: file.originalname,
           facesData: '[]', // Start empty so it is immediately visible in the gallery
         },
       });
 
-      // Add to background processing queue
+      // Add to background processing queue (still uses local file path for scanning)
       const fullPath = path.resolve(file.path);
       uploadQueue.push({ photoId: photo.id, filePath: fullPath });
 
@@ -138,6 +153,10 @@ router.delete('/:photoId', authMiddleware, async (req: AuthRequest, res: Respons
     const photo = await prisma.photo.findUnique({ where: { id: req.params.photoId }, include: { event: true } });
     if (!photo) { res.status(404).json({ error: 'Photo not found' }); return; }
     if (photo.event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
+    
+    // Delete file from disk/R2
+    await deleteFile(photo.url);
+    
     await prisma.photo.delete({ where: { id: req.params.photoId } });
     res.json({ message: 'Photo deleted' });
   } catch (err) {
@@ -152,17 +171,11 @@ router.delete('/event/:eventId/all', authMiddleware, async (req: AuthRequest, re
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
 
-    // Fetch all photos to delete their files from disk
+    // Fetch all photos to delete their files from disk/cloud
     const photos = await prisma.photo.findMany({ where: { eventId } });
-    const uploadDir = process.env.UPLOAD_DIR || './uploads';
 
     for (const photo of photos) {
-      try {
-        const filePath = path.join(uploadDir, path.basename(photo.url));
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch { /* file may already be missing */ }
+      await deleteFile(photo.url);
     }
 
     // Bulk delete from database
@@ -178,8 +191,15 @@ router.delete('/event/:eventId/all', authMiddleware, async (req: AuthRequest, re
 // Download endpoint — forces browser to download instead of opening in a new tab
 router.get('/download/:filename', (req, res: Response): void => {
   const { filename } = req.params;
-  // Sanitize: only allow alphanumeric, hyphens, underscores, dots
   const sanitized = path.basename(filename);
+
+  if (isCloudEnabled()) {
+    // Redirect to cloud storage public URL
+    const base = process.env.CLOUDFLARE_R2_PUBLIC_URL!.replace(/\/$/, '');
+    res.redirect(`${base}/${sanitized}`);
+    return;
+  }
+
   const uploadDir = path.resolve(process.env.UPLOAD_DIR || './uploads');
   const filePath = path.join(uploadDir, sanitized);
 
