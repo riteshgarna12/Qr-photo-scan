@@ -78,7 +78,8 @@ router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => 
 
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const event = await prisma.event.findUnique({ where: { id: req.params.id }, include: { photos: { orderBy: { uploadedAt: 'desc' } }, _count: { select: { photos: true } } } });
+    const id = req.params.id as string;
+    const event = await prisma.event.findUnique({ where: { id }, include: { photos: { orderBy: { uploadedAt: 'desc' } }, _count: { select: { photos: true } } } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
     res.json({ event });
@@ -89,7 +90,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
 
 router.put('/:id/lock', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { isLocked } = req.body;
     const event = await prisma.event.findUnique({ where: { id } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
@@ -103,7 +104,7 @@ router.put('/:id/lock', authMiddleware, async (req: AuthRequest, res: Response):
 
 router.post('/:id/cover', authMiddleware, upload.single('cover'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const event = await prisma.event.findUnique({ where: { id } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }

@@ -73,7 +73,7 @@ async function processUploadQueue() {
 
 router.post('/:eventId/upload', authMiddleware, upload.array('photos', 50), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
     const event = await prisma.event.findUnique({ where: { id: eventId }, include: { host: true, _count: { select: { photos: true } } } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
