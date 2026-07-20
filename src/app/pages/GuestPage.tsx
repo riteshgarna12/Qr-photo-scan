@@ -3,11 +3,19 @@ import { useParams } from 'react-router-dom';
 import { useEventBySlug, useFaceSearch } from '../lib/queries';
 import { Camera, Download, X, ChevronLeft, ChevronRight, Scan, Loader2, Search, Sliders, Film, Lock, Music, Play, CheckCircle } from 'lucide-react';
 
+const BACKEND_BASE = 'https://qr-photo-scan-backend.onrender.com';
+
+const getPhotoUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${BACKEND_BASE}${url}`;
+};
+
 // Helper to force-download a photo via the server's download endpoint
 const downloadPhoto = async (photoUrl: string, fileName?: string) => {
   try {
     const filename = photoUrl.split('/').pop() || 'photo.jpg';
-    const res = await fetch(`http://localhost:3001/api/photos/download/${filename}`);
+    const res = await fetch(`${BACKEND_BASE}/api/photos/download/${filename}`);
     if (!res.ok) throw new Error('Download failed');
     const blob = await res.blob();
     const a = document.createElement('a');
@@ -176,7 +184,7 @@ export default function GuestPage() {
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
           const el = new Image();
           el.crossOrigin = 'anonymous';
-          el.src = `http://localhost:3001${photo.url}`;
+          el.src = getPhotoUrl(photo.url);
           el.onload = () => resolve(el);
           el.onerror = () => reject(new Error('load fail'));
         });
@@ -604,7 +612,7 @@ export default function GuestPage() {
                       }`} 
                       onClick={() => isSelectMode ? handleToggleSelectPhoto(photo.id) : setLightbox(idx)}
                     >
-                      <img src={`http://localhost:3001${photo.url}`} alt="Event photo" className="w-full h-auto block group-hover:scale-[1.02] transition-transform duration-500" />
+                      <img src={getPhotoUrl(photo.url)} alt="Event photo" className="w-full h-auto block group-hover:scale-[1.02] transition-transform duration-500" />
                       
                       {/* select mode check circle overlay */}
                       {isSelectMode && (
@@ -663,7 +671,7 @@ export default function GuestPage() {
           <button className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white" onClick={(e) => { e.stopPropagation(); nav(-1); }}><ChevronLeft size={22} /></button>
           <button className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white" onClick={(e) => { e.stopPropagation(); nav(1); }}><ChevronRight size={22} /></button>
           <div className="max-w-4xl max-h-[85vh] mx-12 flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
-            <img src={`http://localhost:3001${displayedPhotos[lightbox].url}`} alt="Photo" className="max-h-[70vh] max-w-full object-contain rounded-lg" />
+            <img src={getPhotoUrl(displayedPhotos[lightbox].url)} alt="Photo" className="max-h-[70vh] max-w-full object-contain rounded-lg" />
             <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/20 hover:border-white/40 transition-colors text-sm text-white" onClick={(e) => { e.stopPropagation(); downloadPhoto(displayedPhotos[lightbox].url, displayedPhotos[lightbox].fileName || undefined); }}><Download size={14} /> Download</button>
             <p className="text-white/30 text-xs" style={{ fontFamily: "'DM Mono', monospace" }}>{lightbox + 1} / {displayedPhotos.length}</p>
           </div>
