@@ -26,7 +26,7 @@ const upload = multer({
 
 import { getEmbeddingsForImage } from '../utils/faceEngine';
 import { compressImage, formatBytes } from '../utils/imageCompressor';
-import { uploadFile, deleteFile, isCloudEnabled } from '../utils/cloudStorage';
+import { uploadFile, deleteFile, isCloudEnabled, getFileStream } from '../utils/cloudStorage';
 
 // Background queue to process face indexing without blocking upload HTTP response
 const uploadQueue: Array<{ photoId: string; filePath: string }> = [];
@@ -112,7 +112,7 @@ router.post('/:eventId/upload', authMiddleware, upload.array('photos', 50), asyn
           eventId,
           url: publicUrl,
           fileName: file.originalname,
-          facesData: '[]', // Start empty so it is immediately visible in the gallery
+          facesData: null, // Start null so it is tracked as scanning in progress
         },
       });
 
@@ -191,15 +191,25 @@ router.delete('/event/:eventId/all', authMiddleware, async (req: AuthRequest, re
 });
 
 // Download endpoint — forces browser to download instead of opening in a new tab
-router.get('/download/:filename', (req, res: Response): void => {
+router.get('/download/:filename', async (req, res: Response): Promise<void> => {
   const { filename } = req.params;
   const sanitized = path.basename(filename);
 
+  res.setHeader('Content-Disposition', `attachment; filename="${sanitized}"`);
+
   if (isCloudEnabled()) {
-    // Redirect to cloud storage public URL
-    const base = process.env.CLOUDFLARE_R2_PUBLIC_URL!.replace(/\/$/, '');
-    res.redirect(`${base}/${sanitized}`);
-    return;
+    try {
+      const fileData = await getFileStream(sanitized);
+      if (fileData) {
+        if (fileData.contentType) {
+          res.setHeader('Content-Type', fileData.contentType);
+        }
+        fileData.stream.pipe(res);
+        return;
+      }
+    } catch (err: any) {
+      console.error(`Error downloading from cloud storage: ${err.message}`);
+    }
   }
 
   const uploadDir = path.resolve(process.env.UPLOAD_DIR || './uploads');
@@ -210,7 +220,6 @@ router.get('/download/:filename', (req, res: Response): void => {
     return;
   }
 
-  res.setHeader('Content-Disposition', `attachment; filename="${sanitized}"`);
   res.sendFile(filePath);
 });
 
@@ -230,6 +239,11 @@ router.post('/reindex/:eventId', authMiddleware, async (req: AuthRequest, res: R
     for (const photo of photos) {
       const filePath = path.join(uploadDir, path.basename(photo.url));
       if (fs.existsSync(filePath)) {
+        // Set facesData to null so the UI indicates they are being scanned again
+        await prisma.photo.update({
+          where: { id: photo.id },
+          data: { facesData: null },
+        });
         uploadQueue.push({ photoId: photo.id, filePath });
         queued++;
       }

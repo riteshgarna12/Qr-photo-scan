@@ -63,6 +63,14 @@ router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => 
     });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.isLocked) { res.status(403).json({ error: 'This event has been locked' }); return; }
+
+    const pendingPhotos = await prisma.photo.count({
+      where: {
+        eventId: event.id,
+        facesData: null
+      }
+    });
+
     res.json({ 
       id: event.id, 
       eventName: event.eventName, 
@@ -70,7 +78,8 @@ router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => 
       coverImageUrl: event.coverImageUrl, 
       slug: event.slug, 
       photoCount: event._count.photos,
-      subscriptionTier: event.host.subscriptionTier
+      subscriptionTier: event.host.subscriptionTier,
+      pendingPhotos
     });
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });

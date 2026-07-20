@@ -497,6 +497,18 @@ export default function GuestPage() {
           <p className="text-muted-foreground">{eventData.photoCount} photos available · Scan your face to find yours</p>
         </div>
 
+        {eventData.pendingPhotos > 0 && (
+          <div className="mb-8 p-4 bg-accent/5 border border-accent/15 rounded-2xl flex items-start gap-3 text-left">
+            <Loader2 size={16} className="animate-spin text-accent mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <p className="font-semibold text-accent mb-0.5">AI Scan in Progress</p>
+              <p className="text-muted-foreground">
+                Our AI is currently indexing {eventData.pendingPhotos} newly uploaded photo(s). If you don't find your photos, some results might still be loading. Please check back or try searching again shortly.
+              </p>
+            </div>
+          </div>
+        )}
+
         {!hasSearched && !showCamera && (
           <div className="flex flex-col items-center gap-6 py-12">
             <div className="w-24 h-24 rounded-full bg-accent/10 flex items-center justify-center shadow-sm"><Scan size={40} className="text-accent" /></div>

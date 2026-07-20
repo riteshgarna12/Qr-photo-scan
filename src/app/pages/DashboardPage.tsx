@@ -773,24 +773,36 @@ function EventDetailView({ eventId, onBack }: { eventId: string; onBack: () => v
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {photos.map((photo) => (
-                  <div key={photo.id} className="relative aspect-square bg-muted rounded-xl overflow-hidden group border border-border/50">
-                    <img
-                      src={getPhotoUrl(photo.url)}
-                      alt={photo.fileName || ''}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleDeletePhoto(photo.id)}
-                        className="p-2 bg-destructive text-destructive-foreground rounded-full hover:scale-105 transition-all shadow-md"
-                        title="Delete photo"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                {photos.map((photo) => {
+                  const isScanning = photo.facesData === null;
+                  return (
+                    <div key={photo.id} className="relative aspect-square bg-muted rounded-xl overflow-hidden group border border-border/50">
+                      <img
+                        src={getPhotoUrl(photo.url)}
+                        alt={photo.fileName || ''}
+                        className={`w-full h-full object-cover transition-transform duration-300 ${
+                          isScanning ? '' : 'group-hover:scale-105'
+                        }`}
+                      />
+                      {isScanning ? (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 text-white">
+                          <Loader2 size={20} className="animate-spin text-accent" />
+                          <span className="text-[10px] font-medium tracking-wider uppercase text-accent/90">AI Scanning...</span>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleDeletePhoto(photo.id)}
+                            className="p-2 bg-destructive text-destructive-foreground rounded-full hover:scale-105 transition-all shadow-md"
+                            title="Delete photo"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

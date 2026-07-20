@@ -1,6 +1,7 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
 
 // Load variables from process.env
 const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
@@ -106,5 +107,35 @@ export async function deleteFile(fileUrlOrFilename: string): Promise<void> {
     }
   } catch (err: any) {
     console.error(`[Local Disk] Failed to delete local file ${filename}:`, err.message);
+  }
+}
+
+/**
+ * Fetches a file from Cloudflare R2 as a stream.
+ */
+export async function getFileStream(
+  destinationFilename: string
+): Promise<{ stream: Readable; contentType?: string } | null> {
+  if (!isConfigured || !s3Client) {
+    return null;
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: destinationFilename,
+    });
+
+    const response = await s3Client.send(command);
+    if (response.Body) {
+      return {
+        stream: response.Body as Readable,
+        contentType: response.ContentType,
+      };
+    }
+    return null;
+  } catch (err: any) {
+    console.error(`[Cloud Storage] Failed to fetch stream for ${destinationFilename} from R2:`, err.message);
+    return null;
   }
 }

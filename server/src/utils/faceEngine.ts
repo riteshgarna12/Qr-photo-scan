@@ -53,8 +53,8 @@ async function preprocessForDetection(imagePath: string): Promise<string> {
   await sharp(imagePath, { failOn: 'none' })
     .rotate() // auto-rotate based on EXIF
     .resize({
-      width: 1600,
-      height: 1600,
+      width: 1000,
+      height: 1000,
       fit: 'inside',
       withoutEnlargement: true,
     })
@@ -87,19 +87,13 @@ export async function getEmbeddingsForImage(imagePath: string): Promise<Detected
 
     // Run detection with LOW confidence to catch more faces
     // Face-api SSD MobileNet often misses faces at higher thresholds
+    // Run detection with a optimized confidence to catch faces quickly and in a single pass
     const detections = await faceapi
-      .detectAllFaces(img as any, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.15 }))
+      .detectAllFaces(img as any, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.10 }))
       .withFaceLandmarks()
       .withFaceDescriptors();
 
-    // If we got no results at low confidence, try even lower as a fallback
     let allDetections = detections;
-    if (allDetections.length === 0) {
-      allDetections = await faceapi
-        .detectAllFaces(img as any, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.05 }))
-        .withFaceLandmarks()
-        .withFaceDescriptors();
-    }
 
     const results = allDetections.map((det) => {
       const box = det.detection.box;

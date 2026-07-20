@@ -37,6 +37,7 @@ export interface Photo {
   featured: boolean;
   width: number | null;
   height: number | null;
+  facesData: string | null;
   uploadedAt: string;
 }
 
@@ -84,14 +85,32 @@ export function useEvent(eventId: string) {
     queryKey: ['event', eventId],
     queryFn: () => apiRequest<{ event: Event }>(`/events/${eventId}`),
     enabled: !!eventId,
+    refetchInterval: (query) => {
+      const event = query.state.data?.event;
+      const hasPending = event?.photos?.some((p) => p.facesData === null);
+      return hasPending ? 3000 : false; // Poll every 3s if any photos are still indexing
+    }
   });
 }
 
 export function useEventBySlug(slug: string) {
   return useQuery({
     queryKey: ['eventSlug', slug],
-    queryFn: () => apiRequest<{ id: string; eventName: string; eventDate: string | null; coverImageUrl: string | null; slug: string; photoCount: number; subscriptionTier: string }>(`/events/slug/${slug}`),
+    queryFn: () => apiRequest<{ 
+      id: string; 
+      eventName: string; 
+      eventDate: string | null; 
+      coverImageUrl: string | null; 
+      slug: string; 
+      photoCount: number; 
+      subscriptionTier: string;
+      pendingPhotos: number;
+    }>(`/events/slug/${slug}`),
     enabled: !!slug,
+    refetchInterval: (query) => {
+      const pendingPhotos = query.state.data?.pendingPhotos;
+      return pendingPhotos && pendingPhotos > 0 ? 5000 : false; // Poll every 5s if any photos are still indexing
+    }
   });
 }
 
