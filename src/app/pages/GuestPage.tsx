@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useEventBySlug, useFaceSearch } from '../lib/queries';
 import { Camera, Download, X, ChevronLeft, ChevronRight, Scan, Loader2, Search, Sliders, Film, Lock, Music, Play, CheckCircle } from 'lucide-react';
 
-const BACKEND_BASE = 'https://qr-photo-scan-backend.onrender.com';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_BASE = isLocalhost ? 'http://localhost:3001' : 'https://qr-photo-scan-backend.onrender.com';
 
 const getPhotoUrl = (url: string) => {
   if (!url) return '';

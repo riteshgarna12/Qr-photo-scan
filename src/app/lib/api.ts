@@ -1,4 +1,6 @@
-const API_BASE = 'https://qr-photo-scan-backend.onrender.com/api';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_BASE = isLocalhost ? 'http://localhost:3001' : 'https://qr-photo-scan-backend.onrender.com';
+const API_BASE = `${BACKEND_BASE}/api`;
 
 export async function apiRequest<T>(
   endpoint: string,
