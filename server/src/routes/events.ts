@@ -53,8 +53,9 @@ router.get('/my', authMiddleware, async (req: AuthRequest, res: Response): Promi
 
 router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => {
   try {
+    const slug = req.params.slug as string;
     const event = await prisma.event.findUnique({ 
-      where: { slug: req.params.slug }, 
+      where: { slug }, 
       include: { 
         host: { select: { subscriptionTier: true } },
         _count: { select: { photos: true } } 
