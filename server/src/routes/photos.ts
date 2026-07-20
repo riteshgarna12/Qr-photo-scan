@@ -141,7 +141,8 @@ router.post('/:eventId/upload', authMiddleware, upload.array('photos', 50), asyn
 
 router.get('/:eventId', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const photos = await prisma.photo.findMany({ where: { eventId: req.params.eventId }, orderBy: { uploadedAt: 'desc' } });
+    const eventId = req.params.eventId as string;
+    const photos = await prisma.photo.findMany({ where: { eventId }, orderBy: { uploadedAt: 'desc' } });
     res.json({ photos });
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });
@@ -150,14 +151,15 @@ router.get('/:eventId', async (req: AuthRequest, res: Response): Promise<void> =
 
 router.delete('/:photoId', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const photo = await prisma.photo.findUnique({ where: { id: req.params.photoId }, include: { event: true } });
+    const photoId = req.params.photoId as string;
+    const photo = await prisma.photo.findUnique({ where: { id: photoId }, include: { event: true } });
     if (!photo) { res.status(404).json({ error: 'Photo not found' }); return; }
     if (photo.event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
     
     // Delete file from disk/R2
     await deleteFile(photo.url);
     
-    await prisma.photo.delete({ where: { id: req.params.photoId } });
+    await prisma.photo.delete({ where: { id: photoId } });
     res.json({ message: 'Photo deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });
@@ -166,7 +168,7 @@ router.delete('/:photoId', authMiddleware, async (req: AuthRequest, res: Respons
 
 router.delete('/event/:eventId/all', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
     const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
@@ -215,7 +217,7 @@ router.get('/download/:filename', (req, res: Response): void => {
 // Re-index all faces for an event (useful after upgrading the face engine)
 router.post('/reindex/:eventId', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
     const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
     if (event.hostId !== req.userId) { res.status(403).json({ error: 'Not authorized' }); return; }

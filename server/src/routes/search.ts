@@ -23,7 +23,7 @@ import { getEmbeddingsForImage, isMatch } from '../utils/faceEngine';
 
 router.post('/:eventId/face', upload.single('selfie'), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
     const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (!event) { res.status(404).json({ error: 'Event not found' }); return; }
 
