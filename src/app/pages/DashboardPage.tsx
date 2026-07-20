@@ -41,6 +41,14 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+const BACKEND_BASE = 'https://qr-photo-scan-backend.onrender.com';
+
+const getPhotoUrl = (url: string | null) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${BACKEND_BASE}${url}`;
+};
+
 export default function DashboardPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
@@ -222,7 +230,7 @@ export default function DashboardPage() {
                         <div className="h-40 bg-secondary/40 relative overflow-hidden flex items-center justify-center border-b border-border">
                           {event.coverImageUrl ? (
                             <img
-                              src={`http://localhost:3001${event.coverImageUrl}`}
+                              src={getPhotoUrl(event.coverImageUrl)}
                               alt={event.eventName}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
@@ -601,7 +609,7 @@ function EventDetailView({ eventId, onBack }: { eventId: string; onBack: () => v
             <div className="h-44 bg-secondary/50 border rounded-lg relative overflow-hidden flex items-center justify-center mb-4">
               {event.coverImageUrl ? (
                 <img
-                  src={`http://localhost:3001${event.coverImageUrl}`}
+                  src={getPhotoUrl(event.coverImageUrl)}
                   alt="Cover"
                   className="w-full h-full object-cover"
                 />
@@ -768,7 +776,7 @@ function EventDetailView({ eventId, onBack }: { eventId: string; onBack: () => v
                 {photos.map((photo) => (
                   <div key={photo.id} className="relative aspect-square bg-muted rounded-xl overflow-hidden group border border-border/50">
                     <img
-                      src={`http://localhost:3001${photo.url}`}
+                      src={getPhotoUrl(photo.url)}
                       alt={photo.fileName || ''}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -803,7 +811,7 @@ function EventDetailView({ eventId, onBack }: { eventId: string; onBack: () => v
           </button>
 
           <img
-            src={`http://localhost:3001${photos[slideshowIndex].url}`}
+            src={getPhotoUrl(photos[slideshowIndex].url)}
             alt="Slideshow View"
             className="max-h-screen max-w-full object-contain select-none transition-all duration-700 ease-in-out"
           />
