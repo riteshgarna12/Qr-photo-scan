@@ -8,6 +8,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { compressImage, formatBytes } from '../utils/imageCompressor';
 import { uploadFile, deleteFile, isCloudEnabled } from '../utils/cloudStorage';
+import { sanitizeEventName, sanitizeString } from '../utils/validators';
 import fs from 'fs';
 
 const storage = multer.diskStorage({
@@ -26,7 +27,8 @@ function generateSlug(name: string): string {
 
 router.post('/', authMiddleware, checkEventLimit, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { eventName, eventDate } = req.body;
+    const eventName = sanitizeEventName(req.body.eventName);
+    const eventDate = sanitizeString(req.body.eventDate, 30);
     if (!eventName) { res.status(400).json({ error: 'Event name is required' }); return; }
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }

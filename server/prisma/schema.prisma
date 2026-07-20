@@ -15,6 +15,8 @@ model User {
   subscriptionTier      String   @default("FREE")
   subscriptionExpiresAt DateTime?
   createdAt             DateTime @default(now())
+  resetToken            String?
+  resetTokenExp         DateTime?
   updatedAt             DateTime @updatedAt
   events                Event[]
 }
