@@ -547,7 +547,7 @@ function EventDetailView({ eventId, onBack }: { eventId: string; onBack: () => v
 
   const { event } = eventData;
   const photos = event.photos || [];
-  const eventUrl = `http://localhost:5173/e/${event.slug}`;
+  const eventUrl = `${window.location.origin}/e/${event.slug}`;
 
   // Slideshow helpers
   const nextSlide = () => {
